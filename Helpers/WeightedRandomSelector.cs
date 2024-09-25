@@ -7,10 +7,13 @@ namespace SAIN.Helpers
 {
     public class WeightedRandomSelector<T>
     {
+
         private class WeightedOption
         {
+
             public T Option { get; set; }
-            public int Weight { get; set; }
+            public int CutoutValue { get; set; }
+
         }
 
         private List<WeightedOption> _options;
@@ -30,16 +33,14 @@ namespace SAIN.Helpers
             if (weight <= 0)
                 throw new ArgumentException("Weight must be greater than zero.");
 
-            _options.Add(new WeightedOption { Option = option, Weight = weight });
             _totalWeight += weight;
-            if (weight > _highestWeight) {
-                _highestWeight = weight;
-            }
+            _options.Add(new WeightedOption { Option = option, CutoutValue = _totalWeight });
         }
 
         public void ClearOptions()
         {
             _options.Clear();
+            _totalWeight = 0;
         }
 
         public void Test(int iterations = 1000)
@@ -50,25 +51,21 @@ namespace SAIN.Helpers
                     Logger.LogWarning($"Copy of {option.Option} in list");
                     continue;
                 }
+
                 results.Add(option.Option, 0);
             }
 
             for (int i = 0; i < iterations; i++) {
-                
-                _options.Shuffle();
-                int random = _random.Next(1, _highestWeight);
-                foreach (var option in _options) {
-                    if (option.Weight > random) {
-                        results[option.Option]++;
-                        break;
-                    }
-                }
+                T option = GetRandomOption();
+                results[option]++;
             }
 
-            StringBuilder sb =  new StringBuilder();
+            StringBuilder sb = new StringBuilder();
             foreach (var option in results) {
                 sb.AppendLine($"{option.Key} : {option.Value}");
             }
+
+            Console.WriteLine(sb);
             Logger.LogInfo(sb.ToString());
         }
 
@@ -77,18 +74,16 @@ namespace SAIN.Helpers
             if (_options.Count == 0)
                 throw new InvalidOperationException("No options available.");
 
-            _options.Shuffle();
-            for (int i = 0; i < maxIterations; i++) {
-                int random = _random.Next(1, _highestWeight);
-                foreach (var option in _options) {
-                    if (option.Weight > random) {
-                        return option.Option;
-                    }
+            int random = _random.Next(0, _totalWeight);
+            foreach (var option in _options) {
+                if (option.CutoutValue > random) {
+                    return option.Option;
                 }
             }
 
-            // Fallback in case of rounding errors
+            // Fallback in case of rounding errors, although it should never happen with ints 
             return _options.Last().Option;
         }
+
     }
 }
